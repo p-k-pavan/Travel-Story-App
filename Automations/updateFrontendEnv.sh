@@ -19,7 +19,7 @@ fi
 
 # Read current VITE_BASE_URL
 current_url=$(grep '^VITE_BASE_URL=' "$file_to_find")
-new_url="VITE_BASE_URL=\"http://${ipv4_address}:8888\""
+new_url="VITE_BASE_URL=\"http://${ipv4_address}:32000\""
 
 echo "Current: $current_url"
 echo "Target : $new_url"
