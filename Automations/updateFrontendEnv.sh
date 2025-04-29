@@ -9,7 +9,7 @@ ipv4_address=$(aws ec2 describe-instances --instance-ids "$INSTANCE_ID" \
   --output text)
 
 # Set the path to your .env file
-file_to_find="./frontend/.env"
+file_to_find="../frontend/.env"
 
 # Ensure the file exists
 if [ ! -f "$file_to_find" ]; then
