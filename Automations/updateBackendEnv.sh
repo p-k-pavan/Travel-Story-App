@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set the EC2 instance ID
-INSTANCE_ID="i-0ce3b250da2fe8079"
+INSTANCE_ID="i-03ba8564e69fe9d98"
 
 # Get the public IPv4 address from AWS CLI
 ipv4_address=$(aws ec2 describe-instances --instance-ids "$INSTANCE_ID" \
