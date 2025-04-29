@@ -1,22 +1,34 @@
 #!/bin/bash
 
-# Set the Instance ID and path to the .env file
+# Set the EC2 instance ID
 INSTANCE_ID="i-0ce3b250da2fe8079"
 
-# Retrieve the public IP address of the specified EC2 instance
-ipv4_address=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
+# Get the public IPv4 address from AWS CLI
+ipv4_address=$(aws ec2 describe-instances --instance-ids "$INSTANCE_ID" \
+  --query 'Reservations[0].Instances[0].PublicIpAddress' \
+  --output text)
 
-# Path to the .env file
+# Set the path to your .env file
 file_to_find="./frontend/.env"
 
-# Check the current FRONTEND_URL in the .env file
-current_url=$(sed -n "1p" $file_to_find)
+# Ensure the file exists
+if [ ! -f "$file_to_find" ]; then
+  echo "ERROR: File not found at $file_to_find"
+  exit 1
+fi
 
-# Update the .env file if the IP address has changed
-if [[ "$current_url" != "VITE_BASE_URL=\"http://${ipv4_address}:8888\"" ]]; then
-    if [ -f $file_to_find ]; then
-        sed -i -e "s|VITE_BASE_URL.*|VITE_BASE_URL=\"http://${ipv4_address}:8888\"|g" $file_to_find
-    else
-        echo "ERROR: File not found."
-    fi
+# Read current VITE_BASE_URL
+current_url=$(grep '^VITE_BASE_URL=' "$file_to_find")
+new_url="VITE_BASE_URL=\"http://${ipv4_address}:8888\""
+
+echo "Current: $current_url"
+echo "Target : $new_url"
+
+# Update only if different
+if [[ "$current_url" != "$new_url" ]]; then
+  echo "Updating VITE_BASE_URL in .env..."
+  sed -i -E "s|^VITE_BASE_URL=.*|$new_url|" "$file_to_find"
+  echo ".env updated successfully."
+else
+  echo "No update needed. IP is unchanged."
 fi
