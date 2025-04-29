@@ -1,0 +1,118 @@
+@Library('Shared@main') _
+
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'FRONTEND_DOCKER_TAG', defaultValue: '', description: 'Docker tag for frontend image')
+        string(name: 'BACKEND_DOCKER_TAG', defaultValue: '', description: 'Docker tag for backend image')
+    }
+
+    stages {
+
+        stage('Workspace Clean') {
+            steps {
+                cleanWs()
+            }
+        }
+
+        stage('Git: Code Checkout') {
+            steps {
+                script {
+                    code_checkout('https://github.com/p-k-pavan/Travel-Story-App.git', 'main')
+                }
+            }
+        }
+
+        stage('Verify: Docker Images Tags') {
+            steps {
+                script {
+                    echo "FRONTEND_DOCKER_TAG: ${params.FRONTEND_DOCKER_TAG}"
+                    echo "BACKEND_DOCKER_TAG: ${params.BACKEND_DOCKER_TAG}"
+                }
+            }
+        }
+        
+        stage("Update: Kubernetes manifest") {
+            steps {
+                script {
+                    dir('kubernetes') {
+                        sh """
+                        sed -i -e s/story-app-frontend.*/story-app-frontend:${params.FRONTEND_DOCKER_TAG}/g frontend.yaml
+                        sed -i -e s/story-app-backend.*/story-app-backend:${params.BACKEND_DOCKER_TAG}/g backend.yaml
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage("Git: Code update and push to GitHub") {
+            steps {
+                script {
+                    withCredentials([gitUsernamePassword(credentialsId: 'Github-cred', gitToolName: 'Default')]) {
+                        sh '''
+                        echo "Checking repository status: "
+                        git status
+                    
+                        echo "Adding changes to git: "
+                        git add .
+                        
+                        echo "Committing changes: "
+                        git commit -m "Updated environment variables" || true
+                        
+                        echo "Pushing changes to GitHub: "
+                        git push https://github.com/p-k-pavan/Travel-Story-App.git main
+                        '''
+                    }
+                }
+            }
+        }
+    }
+    post {
+        success {
+            script {
+                emailext attachLog: true,
+                from: 'pkpavan2003@gmail.com',
+                subject: "Wanderlust Application has been updated and deployed - '${currentBuild.result}'",
+                body: """
+                    <html>
+                    <body>
+                        <div style="background-color: #FFA07A; padding: 10px; margin-bottom: 10px;">
+                            <p style="color: black; font-weight: bold;">Project: ${env.JOB_NAME}</p>
+                        </div>
+                        <div style="background-color: #90EE90; padding: 10px; margin-bottom: 10px;">
+                            <p style="color: black; font-weight: bold;">Build Number: ${env.BUILD_NUMBER}</p>
+                        </div>
+                        <div style="background-color: #87CEEB; padding: 10px; margin-bottom: 10px;">
+                            <p style="color: black; font-weight: bold;">URL: ${env.BUILD_URL}</p>
+                        </div>
+                    </body>
+                    </html>
+                """,
+                to: 'pkpavan2003@gmail.com',
+                mimeType: 'text/html'
+            }
+        }
+        failure {
+            script {
+                emailext attachLog: true,
+                from: 'pkpavan2003@gmail.com',
+                subject: "Wanderlust Application build failed - '${currentBuild.result}'",
+                body: """
+                    <html>
+                    <body>
+                        <div style="background-color: #FFA07A; padding: 10px; margin-bottom: 10px;">
+                            <p style="color: black; font-weight: bold;">Project: ${env.JOB_NAME}</p>
+                        </div>
+                        <div style="background-color: #90EE90; padding: 10px; margin-bottom: 10px;">
+                            <p style="color: black; font-weight: bold;">Build Number: ${env.BUILD_NUMBER}</p>
+                        </div>
+                    </body>
+                    </html>
+                """,
+                to: 'pkpavan2003@gmail.com',
+                mimeType: 'text/html'
+            }
+        }
+    }
+}
