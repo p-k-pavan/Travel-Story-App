@@ -10,7 +10,7 @@ ipv4_address=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query 'R
 file_to_find="./backend/.env"
 
 # Check the current BACKEND_URL in the .env file
-current_url=$(sed -n "4p" $file_to_find)
+current_url=$(sed -n "3p" $file_to_find)
 
 # Update the .env file if the IP address has changed
 if [[ "$current_url" != "BASE_URL=\"http://${ipv4_address}:8888\"" ]]; then
