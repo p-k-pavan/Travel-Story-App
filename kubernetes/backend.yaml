@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: pkpavan14/story-app-backend:v2
+          image: pkpavan14/story-app-backend:v1
           ports:
             - containerPort: 8888
 
