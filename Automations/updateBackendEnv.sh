@@ -19,7 +19,7 @@ fi
 
 # Read current BASE_URL
 current_url=$(grep '^BASE_URL=' "$file_to_find")
-new_url="BASE_URL=\"http://${ipv4_address}:8888\""
+new_url="BASE_URL=\"http://${ipv4_address}:32000\""
 
 echo "Current: $current_url"
 echo "Target : $new_url"
