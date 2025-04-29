@@ -7,7 +7,7 @@ INSTANCE_ID="i-0ce3b250da2fe8079"
 ipv4_address=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
 
 # Path to the .env file
-file_to_find="../backend/.env."
+file_to_find="../backend/.env"
 
 # Check the current BACKEND_URL in the .env file
 current_url=$(sed -n "4p" $file_to_find)
