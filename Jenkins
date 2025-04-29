@@ -1,0 +1,129 @@
+@Library('Shared@main') _
+
+pipeline {
+    agent any
+    
+    tools {
+        nodejs 'NodeJS-20'
+    }
+
+    environment {
+        SONAR_HOME = tool 'Sonar'
+    }
+
+    parameters {
+        string(name: 'FRONTEND_DOCKER_TAG', defaultValue: '', description: 'Docker tag for frontend image')
+        string(name: 'BACKEND_DOCKER_TAG', defaultValue: '', description: 'Docker tag for backend image')
+    }
+
+    stages {
+
+        stage('Validate Parameters') {
+            steps {
+                script {
+                    if (params.FRONTEND_DOCKER_TAG.trim() == '' || params.BACKEND_DOCKER_TAG.trim() == '') {
+                        error("Both Frontend and Backend Tags Are Required to Proceed Next")
+                    }
+                }
+            }
+        }
+
+        stage('Workspace Clean') {
+            steps {
+                cleanWs()
+            }
+        }
+
+        stage('Git: Code Checkout') {
+            steps {
+                script {
+                    code_checkout('https://github.com/p-k-pavan/Travel-Story-App.git', 'main')
+                }
+            }
+        }
+
+        stage('Trivy: Filesystem Scan') {
+            steps {
+                script {
+                    trivy_scan()
+                }
+            }
+        }
+
+        stage('OWASP: Dependency Check') {
+            steps {
+                script {
+                    owasp_dependency()
+                }
+            }
+        }
+
+        stage('SonarQube: Code Analysis') {
+            steps {
+                script {
+                    sonarqube_analysis('Sonar', 'story-app', 'story-app')
+                }
+            }
+        }
+
+        stage('SonarQube: Quality Gate') {
+            steps {
+                script {
+                    Sonarqube_quality_check()
+                }
+            }
+        }
+
+        stage('Export: Env Variables') {
+            steps{
+                script{
+                    dir('Automations'){
+                        parallel (
+                            'Backend Env setup': {
+                                withAWS(region: 'ap-south-1', credentials: 'aws-credentials') {
+                                    sh 'bash updateBackendEnv.sh'
+                                }
+                            },
+                            'Frontend Env setup': {
+                                withAWS(region: 'ap-south-1', credentials: 'aws-credentials') {
+                                    sh 'bash updateFrontendEnv.sh'
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        stage('Docker: Build Images') {
+            steps {
+                script {
+                    dir('backend') {
+                        docker_build('story-app-backend', "${params.BACKEND_DOCKER_TAG}", 'pkpavan14')
+                    }
+                    dir('frontend') {
+                        docker_build('story-app-frontend', "${params.FRONTEND_DOCKER_TAG}", 'pkpavan14')
+                    }
+                }
+            }
+        }
+
+        stage('Docker: Push to DockerHub') {
+            steps {
+                script {
+                    docker_push('story-app-backend', "${params.BACKEND_DOCKER_TAG}", 'pkpavan14')
+                    docker_push('story-app-frontend', "${params.FRONTEND_DOCKER_TAG}", 'pkpavan14')
+                }
+            }
+        }
+    }
+    post{
+        success{
+            archiveArtifacts artifacts: '*.xml', followSymlinks: false
+            build job: "TRAVEL-STORY-APP-CD", parameters: [
+                string(name: 'FRONTEND_DOCKER_TAG', value: "${params.FRONTEND_DOCKER_TAG}"),
+                string(name: 'BACKEND_DOCKER_TAG', value: "${params.BACKEND_DOCKER_TAG}")
+            ]
+        }
+    }
+}
